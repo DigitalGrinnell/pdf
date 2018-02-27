@@ -1,0 +1,55 @@
+(function ($, Drupal, drupalSettings) {
+  Drupal.behaviors.pdf = {
+    attach: function(context, settings) {
+      PDFJS.workerSrc = settings.pdf.workerSrc;
+      var canvases = context.getElementsByClassName("pdf-thumbnail");
+      Array.prototype.forEach.call(canvases, function(canvas) {
+        var file = canvas.attributes.file.value;
+        PDFJS.getDocument(file).then(function(pdf) {
+          pdf.getPage(1).then(function(page) {
+            var scale = (canvas.attributes.scale) ? canvas.attributes.scale.value : 1;;
+            var viewport = page.getViewport(scale);
+            var context = canvas.getContext('2d');
+            canvas.height = viewport.height;
+            canvas.width = viewport.width;
+            var renderContext = {
+              canvasContext: context,
+              viewport: viewport
+            };
+            page.render(renderContext);
+          });
+        });
+      });
+
+      var renderPdf = function(pdf, container, pageNum) {
+          pdf.getPage(pageNum).then(function(page) {
+            var canvas = document.createElement("canvas");
+            canvas.setAttribute("class", "pdf-canvas");
+            container.appendChild(canvas);
+            var scale = 2.5;
+            var viewport = page.getViewport(scale);
+            var context = canvas.getContext('2d');
+            canvas.height = viewport.height;
+            canvas.width = viewport.width;
+            var renderContext = {
+              canvasContext: context,
+              viewport: viewport
+            };
+            page.render(renderContext);
+          }).then(function() {
+            if (++pageNum <= pdf.numPages) {
+              renderPdf(pdf, container, pageNum);
+            }
+          });
+      };
+
+      var fields = context.getElementsByClassName("pdf-pages");
+      Array.prototype.forEach.call(fields, function(container) {
+        var file = container.attributes.file.value;
+        PDFJS.getDocument(file).then(function(pdf) {
+            renderPdf(pdf, container, 1);
+        });
+      });
+    }
+  };
+})(jQuery, Drupal, drupalSettings);
